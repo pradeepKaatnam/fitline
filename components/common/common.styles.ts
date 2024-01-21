@@ -21,4 +21,12 @@ export const CommonStyles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
   },
+  modalApplyButton: {
+    backgroundColor: "#841584", // This changes the background color
+    borderRadius: 5, // This makes the corners rounded
+    height: 40,
+    justifyContent: "center",
+    marginVertical: 30,
+    marginHorizontal: 10,
+  },
 });

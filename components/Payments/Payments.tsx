@@ -1,28 +1,46 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal, Button } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { ScrollView, View } from "react-native";
+import {
+  IPaymentInfo,
+  IPaymentsDispatchActions,
+  IPaymentsListState,
+  IScheduledPayment,
+  PAYMENTS_ACTIONS,
+  PaymentFilterTypes,
+  PaymentStatus,
+} from "./payments.model";
+import PaymentsFilters from "./PaymentsFilters/PaymentsFilters";
+import { MaterialIcons } from "@expo/vector-icons";
+import {
+  Badge,
+  Button,
+  Dialog,
+  Icon,
+  ListItem,
+  Overlay,
+  Text,
+} from "@rneui/themed";
+import { FontAwesome } from "@expo/vector-icons";
+import { Timestamp } from "firebase/firestore";
 import paymentsStyles from "./payments.styles";
-import OverlayModal from "../common/OverlayModal/OverlayModal";
-import { IPaymentsListState, PaymentFilterTypes } from "./payments.model";
 
 const Payments: React.FC = () => {
-  const paymentsReducer = (state: IPaymentsListState, action: any) => {
+  const programs: { programId: string; programName: string }[] = [
+    {
+      programId: "1234567890",
+      programName: "Test Program",
+    },
+  ];
+
+  const paymentsReducer = (
+    state: IPaymentsListState,
+    action: IPaymentsDispatchActions
+  ) => {
     switch (action.type) {
-      case "UPDATE_FILTER":
+      case PAYMENTS_ACTIONS.SET_PAYMENTS_DATA:
         return {
           ...state,
-          filters: {
-            ...state.filters,
-            [action.payload.key]: action.payload.value,
-          },
-        };
-      case "UPDATE_MODALS_VISIBILE":
-        return {
-          ...state,
-          modalsVisible: {
-            ...state.modalsVisible,
-            [action.payload.key]: action.payload.value,
-          },
+          ...action.data,
         };
       default:
         return state;
@@ -30,127 +48,392 @@ const Payments: React.FC = () => {
   };
 
   const [state, dispatch] = React.useReducer(paymentsReducer, {
-    filters: {},
-    modalsVisible: {},
+    payments: [] as IPaymentInfo[],
+    error: undefined,
+    loading: false,
+    showDialogue: false,
   } as IPaymentsListState);
 
-  const months = [
-    { label: "Jan 2024", key: "jan" },
-    { label: "Feb 2024", key: "feb" },
-    { label: "Mar 2024", key: "mar" },
-    { label: "Apr 2024", key: "apr" },
-    { label: "May 2024", key: "may" },
-    { label: "Jun 2024", key: "jun" },
-    { label: "Jul 2024", key: "jul" },
-  ];
-
-  const programs = [
-    { label: "Intermedite Yoga", key: "program1" },
-    { label: "Advanced Yoga", key: "program2" },
-  ];
-
-  const status = [
-    { label: "Paid", key: "paid" },
-    { label: "Unpaid", key: "unpaid" },
-  ];
-
-  const onSelect = (filterKey: PaymentFilterTypes, value: string) => {
-    dispatch({
-      type: "UPDATE_FILTER",
-      payload: {
-        key: filterKey.toString(),
-        value: value,
-      },
-    });
-    updateModalsVisible(filterKey, false);
+  const onFiltersChange = (filters: {
+    [key in PaymentFilterTypes]: string;
+  }) => {
+    console.log(filters);
   };
 
-  const onClose = () => {};
+  useEffect(() => {
+    const pays = [
+      {
+        communityId: "1234567890",
+        programId: "1234567890",
+        userId: "1234567890",
+        userName: "Test User",
+        frequency: "Monthly",
+        amount: 100.0,
+        scheduledDate: Timestamp.now(),
+        status: "Pending",
+        metadata: {
+          transactionId: "value1",
+          notes: "value2",
+        },
+      },
+      {
+        communityId: "1234567890",
+        programId: "1234567890",
+        userId: "1234567891",
+        userName: "Test User 2",
+        frequency: "Monthly",
+        amount: 100.0,
+        scheduledDate: Timestamp.now(),
+        status: "Pending",
+        metadata: {
+          transactionId: "value1",
+          notes: "value2",
+        },
+      },
+      {
+        communityId: "1234567890",
+        programId: "1234567890",
+        userId: "1234567894",
+        userName: "Test User 3",
+        frequency: "Monthly",
+        amount: 100.0,
+        scheduledDate: Timestamp.now(),
+        paidDate: Timestamp.now(),
+        status: "Paid",
+        metadata: {
+          paidDate: Timestamp.now(),
+          trasactionId: "value1",
+          notes: "value2",
+          paymentMethod: "Cash",
+        },
+      },
+    ] as IScheduledPayment[];
 
-  const updateModalsVisible = (
-    filterType: PaymentFilterTypes,
-    isVisible: boolean
-  ) => {
-    console.log(filterType.toString());
+    const payments1: { programId: string; data: IScheduledPayment[] }[] = [];
+    const isExpanded: { programId: string; isExpanded: boolean }[] = [];
+
+    pays.forEach((payment) => {
+      const program = payments1.find((p) => p.programId == payment.programId);
+      if (program) {
+        program.data.push(payment);
+      } else {
+        payments1.push({
+          programId: payment.programId,
+          data: [payment],
+        });
+
+        isExpanded.push({
+          programId: payment.programId,
+          isExpanded: false,
+        });
+      }
+    });
+
     dispatch({
-      type: "UPDATE_MODALS_VISIBILE",
-      payload: {
-        key: filterType.toString(),
-        value: isVisible,
+      type: PAYMENTS_ACTIONS.SET_PAYMENTS_DATA,
+      data: {
+        payments: payments1,
+        isExpanded: isExpanded,
+      },
+    });
+    // fetch payments
+  }, []);
+
+  const markAsPaid = () => {};
+
+  const getProgramName = (programId: string) => {
+    const program = programs.find((p) => p.programId == programId);
+    return program?.programName;
+  };
+
+  const isExpanded = (programId: string) => {
+    return state.isExpanded?.find((p: any) => p.programId == programId)
+      ?.isExpanded;
+  };
+
+  const setIsExpanded = (programId: string, isExpanded: boolean) => {
+    const newRes: any[] = [];
+    state.isExpanded?.forEach((item: any) => {
+      if (item.programId == programId) {
+        item.isExpanded = isExpanded;
+      }
+      newRes.push({ ...item });
+    });
+
+    dispatch({
+      type: PAYMENTS_ACTIONS.SET_PAYMENTS_DATA,
+      data: {
+        isExpanded: newRes,
+      },
+    });
+  };
+
+  const toggleDialog = (showDialog: boolean) => {
+    dispatch({
+      type: PAYMENTS_ACTIONS.SET_PAYMENTS_DATA,
+      data: {
+        showDialogue: showDialog,
       },
     });
   };
 
   return (
-    <View style={paymentsStyles.filtersContainer}>
-      <TouchableOpacity
-        onPress={() => {
-          updateModalsVisible(PaymentFilterTypes.MONTH, true);
-        }}
-        style={paymentsStyles.filterButtonContainer}
-      >
-        <Text style={paymentsStyles.filterButtonText}>Jan</Text>
-        <AntDesign
-          style={{ marginHorizontal: 5 }}
-          name="caretdown"
-          size={10}
-          color="white"
-        />
-      </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: "white" }}>
+      <View style={paymentsStyles.paymentsDashboardContainer}>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "bold",
+            marginTop: 10,
+            marginLeft: 26,
+          }}
+        >
+          This Month
+        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginVertical: 10,
+          }}
+        >
+          <View style={{ justifyContent: "flex-start" }}>
+            <Text style={[paymentsStyles.paymentsDashboardItem]}>
+              Possible Earnings
+            </Text>
+            <Text style={paymentsStyles.paymentsDashboardItem}>
+              Total Earnings
+            </Text>
+            <Text style={[paymentsStyles.paymentsDashboardItem]}>
+              Pending Earnings
+            </Text>
+          </View>
+          <View>
+            <Text style={paymentsStyles.paymentsDashboardItem}>₹ 0</Text>
+            <Text style={paymentsStyles.paymentsDashboardItem}>₹ 0</Text>
+            <Text style={paymentsStyles.paymentsDashboardItem}>₹ 0</Text>
+          </View>
+        </View>
+        {/* <View style={paymentsStyles.paymentsDashboardItem}>
+          <Text style={paymentsStyles.paymentsDashboardItemValue}>₹ 0</Text>
+          <Text style={paymentsStyles.paymentsDashboardItemLabel}>
+            Total Due
+          </Text>
+        </View>
+        <View style={paymentsStyles.paymentsDashboardItem}>
+          <Text style={paymentsStyles.paymentsDashboardItemValue}>₹ 0</Text>
+          <Text style={paymentsStyles.paymentsDashboardItemLabel}>
+            Total Paid
+          </Text>
+        </View>
+        <View style={paymentsStyles.paymentsDashboardItem}>
+          <Text style={paymentsStyles.paymentsDashboardItemValue}>₹ 0</Text>
+          <Text style={paymentsStyles.paymentsDashboardItemLabel}>
+            Total Pending
+          </Text>
+        </View> */}
+      </View>
+      <PaymentsFilters onChange={onFiltersChange} />
+      <View style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }}>
+          {state.payments?.map((paymentInfo: IPaymentInfo) => {
+            return (
+              <ListItem.Accordion
+                key={paymentInfo.programId}
+                content={
+                  <ListItem.Content>
+                    <View
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text style={{ marginRight: 10 }}>
+                        {getProgramName(paymentInfo.programId)}
+                      </Text>
+                    </View>
+                  </ListItem.Content>
+                }
+                isExpanded={isExpanded(paymentInfo.programId)}
+                onPress={() => {
+                  setIsExpanded(
+                    paymentInfo.programId,
+                    !isExpanded(paymentInfo.programId)
+                  );
+                }}
+              >
+                {paymentInfo.data?.map((payment) => {
+                  return (
+                    <ListItem
+                      key={payment.userId}
+                      bottomDivider
+                      containerStyle={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                      }}
+                      onPress={() => {
+                        toggleDialog(true);
+                      }}
+                    >
+                      <ListItem.Content>
+                        <View
+                          style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            width: "100%",
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "flex-start",
+                              alignItems: "center",
+                            }}
+                          >
+                            <MaterialIcons
+                              name="payment"
+                              size={45}
+                              color="black"
+                            />
+                            <View
+                              style={{
+                                justifyContent: "flex-start",
+                                alignItems: "center",
+                                marginLeft: 10,
+                              }}
+                            >
+                              <Text>{payment.userName}</Text>
+                              <Text></Text>
+                            </View>
+                          </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          updateModalsVisible(PaymentFilterTypes.PROGRAM, true);
-        }}
-        style={paymentsStyles.filterButtonContainer}
-      >
-        <Text style={paymentsStyles.filterButtonText}>Programs</Text>
-        <AntDesign
-          style={{ marginHorizontal: 5 }}
-          name="caretdown"
-          size={10}
-          color="white"
-        />
-      </TouchableOpacity>
+                          <View>
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                justifyContent: "flex-end",
+                                alignItems: "center",
+                              }}
+                            >
+                              <FontAwesome
+                                name="rupee"
+                                size={12}
+                                color="black"
+                              />
+                              <Text style={{ marginLeft: 5, fontSize: 15 }}>
+                                {payment.amount}
+                              </Text>
+                            </View>
+                            <Text
+                              style={[
+                                payment.status == PaymentStatus.UNPAID
+                                  ? { color: "red" }
+                                  : { color: "green" },
+                                { alignSelf: "flex-end" },
+                              ]}
+                            >
+                              {payment.status}
+                            </Text>
+                          </View>
+                        </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          updateModalsVisible(PaymentFilterTypes.STATUS, true);
-        }}
-        style={paymentsStyles.filterButtonContainer}
+                        {payment.status == "Paid" && (
+                          <View
+                            style={{
+                              marginHorizontal: 5,
+                              marginVertical: 10,
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              width: "100%",
+                            }}
+                          >
+                            <Text>
+                              {payment.metadata?.paidDate
+                                ? payment.metadata.paidDate
+                                    .toDate()
+                                    .toLocaleDateString(undefined, {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })
+                                : payment
+                                    .paidDate!.toDate()
+                                    .toLocaleDateString(undefined, {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })}
+                            </Text>
+                            {payment.metadata?.paymentMethod && (
+                              <Text style={{ marginRight: 5 }}>
+                                {payment.metadata.paymentMethod}
+                              </Text>
+                            )}
+                          </View>
+                        )}
+                      </ListItem.Content>
+                    </ListItem>
+                  );
+                })}
+              </ListItem.Accordion>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      <Overlay
+        isVisible={state.showDialogue!}
+        onBackdropPress={() => toggleDialog(false)}
+        style={{ width: "100%", height: "50%" }}
       >
-        <Text style={paymentsStyles.filterButtonText}>Status</Text>
-        <AntDesign
-          style={{ marginHorizontal: 5 }}
-          name="caretdown"
-          size={10}
-          color="white"
+        <Text>Hello!</Text>
+        <Text>Welcome to React Native Elements</Text>
+        <Button
+          icon={
+            <Icon
+              name="wrench"
+              type="font-awesome"
+              color="white"
+              size={25}
+              iconStyle={{ marginRight: 10 }}
+            />
+          }
+          title="Start Building"
+          onPress={() => toggleDialog(false)}
         />
-      </TouchableOpacity>
-      {state.modalsVisible[PaymentFilterTypes.MONTH] && (
-        <OverlayModal
-          items={months}
-          onSelect={(value) => onSelect(PaymentFilterTypes.MONTH, value)}
-          onClose={onClose}
-          selectedItemKey={state.filters[PaymentFilterTypes.MONTH]}
-        />
-      )}
-      {state.modalsVisible[PaymentFilterTypes.PROGRAM] && (
-        <OverlayModal
-          items={programs}
-          onSelect={(value) => onSelect(PaymentFilterTypes.PROGRAM, value)}
-          onClose={onClose}
-          selectedItemKey={state.filters[PaymentFilterTypes.PROGRAM]}
-        />
-      )}
-      {state.modalsVisible[PaymentFilterTypes.STATUS] && (
-        <OverlayModal
-          items={status}
-          onSelect={(value) => onSelect(PaymentFilterTypes.STATUS, value)}
-          onClose={onClose}
-          selectedItemKey={state.filters[PaymentFilterTypes.STATUS]}
-        />
-      )}
+      </Overlay>
+
+      <Dialog
+        isVisible={false}
+        onBackdropPress={() => {
+          toggleDialog(false);
+        }}
+      >
+        <View style={{ padding: 10 }}>
+          <Text>Are you sure you want to mark this payment as paid?</Text>
+        </View>
+        <Dialog.Actions>
+          <Dialog.Button
+            title="CONFIRM"
+            onPress={() => {
+              console.log(`Option was selected!`);
+            }}
+          />
+          <Dialog.Button
+            title="CANCEL"
+            onPress={() => {
+              toggleDialog(false);
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
     </View>
   );
 };

@@ -3,20 +3,32 @@ import { useState } from "react";
 import {
   Modal,
   ScrollView,
+  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { CommonStyles } from "../common.styles";
 
 export type OverlayModalProps = {
-  onSelect: (selected: string) => void;
-  onClose: () => void;
+  onSelect: (selected: string | undefined) => void;
   items: { label: string; key: string }[];
   selectedItemKey?: string;
   visible?: boolean;
 };
 
 const OverlayModal: React.FC<OverlayModalProps> = (props) => {
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(
+    props.selectedItemKey
+  );
+
+  const applyFilters = () => {
+    props.onSelect(selectedKey);
+  };
+
+  const clearFilters = () => {
+    setSelectedKey(undefined);
+  };
+
   return (
     <>
       <Modal
@@ -29,7 +41,7 @@ const OverlayModal: React.FC<OverlayModalProps> = (props) => {
       >
         <TouchableWithoutFeedback
           onPress={() => {
-            props.onClose();
+            props.onSelect(undefined);
           }}
         >
           <View
@@ -41,6 +53,24 @@ const OverlayModal: React.FC<OverlayModalProps> = (props) => {
           >
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={CommonStyles.overlayModalContainer}>
+                <TouchableOpacity
+                  onPress={clearFilters}
+                  style={{
+                    padding: 10,
+                    borderRadius: 5,
+                    alignSelf: "flex-end",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#841584",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    CLEAR
+                  </Text>
+                </TouchableOpacity>
                 {props.items.map((item) => {
                   return (
                     <View style={CommonStyles.overlayModalItem} key={item.key}>
@@ -53,9 +83,9 @@ const OverlayModal: React.FC<OverlayModalProps> = (props) => {
                         {item.label}
                       </Text>
                       <CheckBox
-                        checked={props.selectedItemKey === item.key}
+                        checked={selectedKey === item.key}
                         onPress={() => {
-                          props.onSelect(item.key);
+                          setSelectedKey(item.key);
                         }}
                         style={{ margin: 0, padding: 0 }}
                         iconType="material-community"
@@ -65,6 +95,15 @@ const OverlayModal: React.FC<OverlayModalProps> = (props) => {
                     </View>
                   );
                 })}
+                <TouchableOpacity
+                  style={CommonStyles.modalApplyButton}
+                  //disabled={!verificationId}
+                  onPress={applyFilters}
+                >
+                  <Text style={{ color: "white", textAlign: "center" }}>
+                    APPLY
+                  </Text>
+                </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
           </View>
