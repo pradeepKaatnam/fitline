@@ -150,9 +150,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   return (
     <FirebaseContext.Provider value={value}>
-      {/* {loading && <Loader />}
-      {!loading && (isSignedInUser && user ? <Home /> : <PhoneAuthScreen />)} */}
-      <Home />
+      {loading && <Loader />}
+      {!loading && (isSignedInUser && user ? <Home /> : <PhoneAuthScreen />)}
+      {/* <Home /> */}
     </FirebaseContext.Provider>
   );
 };
